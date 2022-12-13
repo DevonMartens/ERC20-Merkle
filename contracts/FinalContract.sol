@@ -65,8 +65,8 @@ contract NextContract is ERC20, Ownable  {
     event TransactionDispute(
         address indexed origin,
         address indexed destination,
-        uint indexed lockBlock,
-        uint indexed freedomBlock
+        uint lockBlock,
+        uint freedomBlock
     );
 
     /**  
@@ -136,11 +136,12 @@ contract NextContract is ERC20, Ownable  {
             freedomBlock: freedomBlock
         }
         );
+        
         emit TransactionDispute(
             merkleApprovedAddress,
             to,
             lockBlock,
-            freedomBlock,
+            freedomBlock
         );
 
     }
