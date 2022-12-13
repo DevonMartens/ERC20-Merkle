@@ -1,4 +1,4 @@
-const Token = artifacts.require("Token");
+const { BN, expectRevert, time } = require('@openzeppelin/test-helpers');
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const { assert } = require("chai");
 const { MerkleTree } = require('merkletreejs');
