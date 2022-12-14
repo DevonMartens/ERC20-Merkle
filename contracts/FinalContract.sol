@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-contract NextContract is ERC20, Ownable  {
+contract FinalContract is ERC20, Ownable  {
     /*@Dev: Allows signiture verification.*/
     using ECDSA for bytes32;
 
@@ -211,7 +211,7 @@ contract NextContract is ERC20, Ownable  {
     {
         uint256 approveNonce = _userNonce[_msgSender()];
         bytes32 userHash = keccak256(
-            abi.encodePacked(address(this), approveNonce, to, _msgSender()));
+            abi.encodePacked(address(this), approveNonce, to, merkleApprovedAddress, _msgSender()));
             address messageSigner = userHash.toEthSignedMessageHash().recover(signature);
             require((messageSigner == merkleApprovedAddress), "INVALID_CALLER");
         return true;

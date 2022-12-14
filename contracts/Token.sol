@@ -41,9 +41,9 @@ contract Token is ERC20, Ownable {
     @Params: It takes in the `proof` which generally speaking we would calculate and be passing in on the front end to make things easier for users.
     @Params: It takes in two addresses `to` which is where we are ending the tokens and `merkleApprovedAddress`.
     */
-     function mintToken(bytes32[] memory proof) external {
-        require(isValid(proof, keccak256(abi.encodePacked(msg.sender))), "INVALID_ADDRESS");
-        _mint(msg.sender, 1);
+     function mintToken(address to, bytes32[] memory proof) external onlyOwner {
+        require(isValid(proof, keccak256(abi.encodePacked(to))), "INVALID_ADDRESS");
+        _mint(to, 1);
     }
     /**  
     ================================================

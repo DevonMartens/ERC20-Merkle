@@ -1,8 +1,18 @@
-const { BN, expectRevert, time } = require('@openzeppelin/test-helpers');
+const Final = artifacts.require("FinalContract");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const { assert } = require("chai");
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
+
+/*
+@Dev: Storage for owner keys and other keys from Ganache
+@Notice: Take first and second keys from ganache.
+*/
+
+const OWNER_KEYS = "0x705920abdc67b536dea9cebaf1252211197657cc3f19b340dc03babd09363bbe";
+
+
+
 
 /*
 @Dev: Imports utils file.
@@ -18,6 +28,7 @@ const _BN = web3.utils.BN;
 const BN = (value) => {
     return new _BN(value)
 }
+
 
 /*
 @Dev: converts ether values to Wei to guage function gas usage/
@@ -44,17 +55,39 @@ const getLastEvent = async (eventName, instance) => {
 
 var accounts = web3.eth.accounts;
 
+var privatekeys = [];
+var pubKeys = [];
+var amount = 100;
+
+ 
+
+  for (var i = 0; i < amount; i++) {
+  let key =  web3.eth.accounts.create();
+  let private = key.privateKey;
+  const withoutFirst2 = private.slice(2)
+  let public = key.address;
+  privatekeys.push(private);
+  pubKeys.push(public);
+}
 
 
-
-// console.log(privatekeys);
-// console.log(pubKeys);
 
 
 /*
 @notice: contract and corresponding number of accounts. Owner is the first key.
 */
-contract("Token", (privatekeys) => {
+contract("Final", ([
+    owner,
+    alice,
+    bob,
+    account4,
+    account5,
+    account6,
+    account7,
+    account8,
+    account9,
+    account10
+]) => {
 
 /*
 @notice: variables to represent contracts.
@@ -67,77 +100,186 @@ contract("Token", (privatekeys) => {
 */
 
 
-describe("Address Verification", () => {   
+
+
+describe("Mint Function", () => {   
  //   let token;
     beforeEach(async () => {
-   
-    /*
-    @dev: deploys contract and awaits for constructor input.
-    @notice: test starts after this
-    */
+            //keys
+            const keys = [
+                owner,
+                alice,
+                bob,
+                account4,
+                account5,
+                account6,
+                account7,
+                account8,
+                account9,
+                account10
+            ];
+            const leaves = keys.map(x => keccak256(x));
+            const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+            const buf2hex = x => '0x' + x.toString('hex');
 
-    //1, get root
-    //const addresses = publicKeys;
+            root = buf2hex(tree.getRoot());
+
+    
+
+            const final = await Final.new(root);
+
+            const nonce = final._userNonce(owner);
+         
+            //hashes variables
+            const message = web3.utils.soliditySha3(
+                final.address,
+                nonce,
+                owner,
+                alice,
+                owner,
+            );
+            //signs with private key
+            signatureObject = await web3.eth.accounts.sign(
+                message,
+               OWNER_KEYS
+            );
+        
 
 
 
 });    
 
-/*
-@Dev:Test to check that only the MINTER can call the function to exchange the token.
-*/
-it("it should allow all 100 addresses to mint", async () => {
-    var privatekeys = [];
-var pubKeys = [];
-var amount = 100;
-async function getKeys() {
- 
+    it("it should allow all 100 addresses to mint", async () => {   
+        // const leaves = pubKeys.map(x => keccak256(x));
+        // const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+        // const buf2hex = x => '0x' + x.toString('hex');
 
-  for (var i = 0; i < amount; i++) {
-  let key =  web3.eth.accounts.create();
-  let private = key.privateKey;
-  const withoutFirst2 = private.slice(2)
-   let public = key.address;
- // let public = web3.eth.accounts.privateKeyToAccount(private);
- //privatekeys.push(withoutFirst2);
- privatekeys.push(private);
-  console.log(withoutFirst2);
+        // root = buf2hex(tree.getRoot());
 
-  pubKeys.push(public);
+    
 
-}
-}
+        // const final = await Final.new(root);
+        //set base number for counting
+        let total = 0;
+        
+        for (var i=0; i < keys.length; i++) {
+            const leaf = await keccak256(keys[i]); // address from wallet using walletconnect/metamask
+            const proof = tree.getProof(leaf).map(x => buf2hex(x.data));
 
-    await getKeys();
-    //get root
+
+            await final.initiateTransfer(alice, pubKeys[i], proof, signatureObject.signature);
+        
+            total +=1;
+        }
+        
+        assert.equal(total, keys.keys);
+    });
+    it("it change the balance of the account it mints to", async () => {   
     const leaves = pubKeys.map(x => keccak256(x));
     const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
-    const buf2hex = x => '0x' + x.toString('hex')  
-    const root =  buf2hex(tree.getRoot());
-    ///deploy
-    const token = await Token.new(root);
+    const buf2hex = x => '0x' + x.toString('hex');
+
+    root = buf2hex(tree.getRoot());
+
+ 
+
+    const final = await Final.new(root);
     //set base number for counting
     let total = 0;
     
     for (var i=0; i < pubKeys.length; i++) {
-        const leaf = keccak256(pubKeys[i]); // address from wallet using walletconnect/metamask
-        const proof = tree.getProof(leaf).map(x => buf2hex(x.data))
+        const leaf = await keccak256(pubKeys[i]); // address from wallet using walletconnect/metamask
+        const proof = tree.getProof(leaf).map(x => buf2hex(x.data));
 
-       // let sender = privatekeys[i].toLowerCase();
-       let sender = web3.utils.toChecksumAddress(privatekeys[i])
 
-       console.log(privatekeys);
-        await token.mintToken
-        (
-            proof, 
-        {
-            from : sender,
-        }
-        );  
+        await final.initiateTransfer(alice, pubKeys[i], proof, signatureObject.signature);
+    
         total +=1;
       }
       
       assert.equal(total, pubKeys.length);
+
+      const firstAccountBalance = await final.balanceOf(pubKeys[0]);
+      const secondAccountBalance = await final.balanceOf(pubKeys[1]);
+      const num = 1;
+      const shouldBeBalance = num.toString();
+
+      assert.equal(firstAccountBalance, shouldBeBalance);
+      assert.equal(secondAccountBalance, shouldBeBalance);
+    });
+    it("initiateTransfer should only be allowed to be called by the owner", async () => {   
+
+        
+        const leaves = pubKeys.map(x => keccak256(x));
+        const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+        const buf2hex = x => '0x' + x.toString('hex');
+        root = buf2hex(tree.getRoot());
+        const leaf = await keccak256(pubKeys[0]); // address from wallet using walletconnect/metamask
+        const proof = tree.getProof(leaf).map(x => buf2hex(x.data));
+
+        const final = await Final.new(root);
+
+        await expectRevert(
+        final.initiateTransfer(
+            alice, pubKeys[i], proof, signatureObject.signature,
+            {
+                from: alice
+            }
+        ),
+        "Ownable: caller is not the owner"
+        );
+        
+        await final.initiateTransfer(
+            alice, pubKeys[i], proof, signatureObject.signature,
+            {
+                from: owner
+            }
+        );
+    });
+});
+    it("Addresses not in tree should not be able to get tokens", async () => {   
+
+        
+        const leaves = pubKeys.map(x => keccak256(x));
+        const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+        const buf2hex = x => '0x' + x.toString('hex');
+        root = buf2hex(tree.getRoot());
+        const leaf = await keccak256(pubKeys[0]); // address from wallet using walletconnect/metamask
+        const proof = tree.getProof(leaf).map(x => buf2hex(x.data));
+
+        const final = await Final.new(root);
+
+        await expectRevert(
+        final.initiateTransfer(
+            alice, pubKeys[i], proof, signatureObject.signature,
+        ),
+        "INVALID_ADDRESS"
+        );
+        
+        await final.initiateTransfer(
+            alice, pubKeys[i], proof, signatureObject.signature,
+            {
+                from: owner
+            }
+        );
+    });
+describe("Inital Values", () => { 
+    it("it should have the correct values for root post deployment", async () => {   
+        const leaves = pubKeys.map(x => keccak256(x));
+        const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+        const buf2hex = x => '0x' + x.toString('hex');
+    
+        root = buf2hex(tree.getRoot());
+    
+     
+    
+        const final = await Final.new(root);
+        //gets root value
+        const liveRoot = await final.root();
+          
+        assert.equal(root, liveRoot);
+    })
 });
 });
-});
+
+
